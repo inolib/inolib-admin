@@ -673,20 +673,38 @@ add_filter('rest_prepare_post', 'include_comments_in_post_response', 10, 3);
 add_action('rest_api_init', function () {
 	error_log('REST API Initialized');
 	register_rest_route('custom-api/v2', '/contact', array(
-			'methods' => 'POST', 
+			'methods' => 'POST',
 			'callback' => 'handle_contact_form_submission',
+			'permission_callback' => '__return_true', // Permet de rendre la route publique
 	));
 });
 
 function handle_contact_form_submission(WP_REST_Request $request) {
+	// Récupérer les paramètres de la requête
 	$parameters = $request->get_json_params();
 
+	// Validation de base des paramètres
+	if (
+			empty($parameters['firstName']) ||
+			empty($parameters['lastName']) ||
+			empty($parameters['email']) ||
+			empty($parameters['message'])
+	) {
+			return new WP_REST_Response('Certains champs obligatoires sont manquants', 400);
+	}
+
+	// Sanitize les champs
 	$first_name = sanitize_text_field($parameters['firstName']);
 	$last_name = sanitize_text_field($parameters['lastName']);
 	$email = sanitize_email($parameters['email']);
-	$phone = sanitize_text_field($parameters['phoneNumber']);
+	$phone = isset($parameters['phoneNumber']) ? sanitize_text_field($parameters['phoneNumber']) : 'Non spécifié';
 	$message = sanitize_textarea_field($parameters['message']);
-	$interest = sanitize_text_field($parameters['interest']); 
+	$interest = sanitize_text_field($parameters['interest']);
+
+	// Vérifier si l'adresse email est valide
+	if (!is_email($email)) {
+			return new WP_REST_Response('Adresse email invalide', 400);
+	}
 
 	// Définir l'adresse email de destination en fonction de l'intérêt
 	if (in_array($interest, ['Audit', 'Accompagnement', 'Développement'])) {
@@ -696,9 +714,10 @@ function handle_contact_form_submission(WP_REST_Request $request) {
 	} elseif ($interest === 'Autre') {
 			$recipient_email = 'autre@example.com';
 	} else {
-			$recipient_email = 'default@example.com';
+			$recipient_email = 'default@example.com'; // Adresse par défaut si aucun intérêt n'est sélectionné
 	}
 
+	// Préparer le sujet et le corps du message
 	$subject = "Nouvelle demande de contact de $first_name $last_name - $interest";
 	$body = "
 			Nom: $first_name $last_name\n
@@ -710,10 +729,16 @@ function handle_contact_form_submission(WP_REST_Request $request) {
 	$headers = array('Content-Type: text/plain; charset=UTF-8', 'Reply-To: ' . $email);
 
 	// Envoyer l'email à l'adresse appropriée
-	wp_mail($recipient_email, $subject, $body, $headers);
+	$email_sent = wp_mail($recipient_email, $subject, $body, $headers);
 
-	return new WP_REST_Response('Message envoyé avec succès', 200);
+	// Vérifier si l'email a bien été envoyé
+	if ($email_sent) {
+			return new WP_REST_Response('Message envoyé avec succès', 200);
+	} else {
+			return new WP_REST_Response('Une erreur est survenue lors de l\'envoi de l\'email', 500);
+	}
 }
+
 add_filter('rest_allow_anonymous_comments', '__return_true');
 
 // Ajouter une route API REST pour générer un token temporaire
