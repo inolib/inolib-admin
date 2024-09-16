@@ -670,6 +670,7 @@ add_filter('rest_prepare_post', 'include_comments_in_post_response', 10, 3);
  add_filter('rest_allow_anonymous_comments', '__return_true');
 
 // Enregistrement d'une route personnalisée pour le formulaire de contact
+// Enregistrement d'une route personnalisée pour le formulaire de contact
 add_action('rest_api_init', function () {
 	error_log('REST API Initialized');
 	register_rest_route('custom-api/v2', '/contact', array(
@@ -680,16 +681,13 @@ add_action('rest_api_init', function () {
 });
 
 function handle_contact_form_submission(WP_REST_Request $request) {
-	// Récupérer les paramètres de la requête
+	// Log des données pour vérifier si la route fonctionne
+	error_log(print_r($request->get_json_params(), true));
+
 	$parameters = $request->get_json_params();
 
 	// Validation de base des paramètres
-	if (
-			empty($parameters['firstName']) ||
-			empty($parameters['lastName']) ||
-			empty($parameters['email']) ||
-			empty($parameters['message'])
-	) {
+	if (empty($parameters['firstName']) || empty($parameters['lastName']) || empty($parameters['email']) || empty($parameters['message'])) {
 			return new WP_REST_Response('Certains champs obligatoires sont manquants', 400);
 	}
 
@@ -706,18 +704,8 @@ function handle_contact_form_submission(WP_REST_Request $request) {
 			return new WP_REST_Response('Adresse email invalide', 400);
 	}
 
-	// Définir l'adresse email de destination en fonction de l'intérêt
-	if (in_array($interest, ['Audit', 'Accompagnement', 'Développement'])) {
-			$recipient_email = 'maria.grairi33@hotmail.com';
-	} elseif ($interest === 'Formation') {
-			$recipient_email = 'maria.grairi33@hotmail.com';
-	} elseif ($interest === 'Autre') {
-			$recipient_email = 'autre@example.com';
-	} else {
-			$recipient_email = 'default@example.com'; // Adresse par défaut si aucun intérêt n'est sélectionné
-	}
-
-	// Préparer le sujet et le corps du message
+	// Envoyer un email à l'administrateur ou autre personne
+	$recipient_email = "maria.grairi33@hotmail.com"; 
 	$subject = "Nouvelle demande de contact de $first_name $last_name - $interest";
 	$body = "
 			Nom: $first_name $last_name\n
@@ -728,10 +716,8 @@ function handle_contact_form_submission(WP_REST_Request $request) {
 	";
 	$headers = array('Content-Type: text/plain; charset=UTF-8', 'Reply-To: ' . $email);
 
-	// Envoyer l'email à l'adresse appropriée
 	$email_sent = wp_mail($recipient_email, $subject, $body, $headers);
 
-	// Vérifier si l'email a bien été envoyé
 	if ($email_sent) {
 			return new WP_REST_Response('Message envoyé avec succès', 200);
 	} else {
