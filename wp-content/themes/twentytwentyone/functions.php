@@ -749,3 +749,19 @@ add_filter('rest_pre_dispatch', function ($result, $server, $request) {
 
 	return $result;
 }, 10, 3);
+function add_cors_headers() {
+	// Autoriser uniquement les requêtes provenant de https://inolib.fr
+	header("Access-Control-Allow-Origin: https://inolib.fr");
+	header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+	header("Access-Control-Allow-Headers: X-Requested-With, Content-Type, Authorization");
+
+	// Permettre les requêtes de type "OPTIONS" (prévol)
+	if ('OPTIONS' === $_SERVER['REQUEST_METHOD']) {
+			status_header(200);
+			exit();
+	}
+}
+
+add_action('rest_api_init', function() {
+	add_action('rest_pre_serve_request', 'add_cors_headers');
+});
