@@ -705,7 +705,7 @@ function handle_contact_form_submission(WP_REST_Request $request) {
 	}
 
 	// Envoyer un email à l'administrateur ou autre personne
-	$recipient_email = "maria.grairi33@hotmail.com"; 
+	$recipient_email = "djebrine.aloui@inolib.com"; 
 	$subject = "Nouvelle demande de contact de $first_name $last_name - $interest";
 	$body = "
 			Nom: $first_name $last_name\n
